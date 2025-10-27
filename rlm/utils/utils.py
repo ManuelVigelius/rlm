@@ -4,6 +4,7 @@ Utility functions for the RLM REPL Client.
 
 import re
 from typing import List, Dict, Optional, Tuple, Any
+from pandas import DataFrame
 
 def find_code_blocks(text: str) -> List[str]:
     """
@@ -219,9 +220,15 @@ def convert_context_for_repl(context):
     if isinstance(context, dict):
         context_data = context
         context_str = None
+        context_ts = None
+    elif isinstance(context, DataFrame):
+        context_data = None
+        context_str = None
+        context_ts = context
     elif isinstance(context, str):
         context_data = None
         context_str = context
+        context_ts = None
     elif isinstance(context, list):
         if len(context) > 0 and isinstance(context[0], dict):
             if "content" in context[0]:
@@ -229,11 +236,14 @@ def convert_context_for_repl(context):
             else:
                 context_data = context
             context_str = None
+            context_ts = None
         else:
             context_data = context
             context_str = None
+            context_ts = None
     else:
         context_data = context
         context_str = None
+        context_ts = None
     
-    return context_data, context_str
+    return context_data, context_str, context_ts

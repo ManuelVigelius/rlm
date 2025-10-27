@@ -3,6 +3,7 @@ Simple Recursive Language Model (RLM) with REPL environment.
 """
 
 from typing import Dict, List, Optional, Any 
+from pandas import DataFrame
 
 from rlm import RLM
 from rlm.repl import REPLEnv
@@ -63,11 +64,12 @@ class RLM_REPL(RLM):
         self.logger.log_initial_messages(self.messages)
         
         # Initialize REPL environment with context data
-        context_data, context_str = utils.convert_context_for_repl(context)
+        context_data, context_str, context_ts = utils.convert_context_for_repl(context)
         
         self.repl_env = REPLEnv(
             context_json=context_data, 
-            context_str=context_str, 
+            context_str=context_str,
+            context_ts=context_ts,
             recursive_model=self.recursive_model,
         )
         
@@ -119,6 +121,22 @@ class RLM_REPL(RLM):
         self.logger.log_final_response(final_answer)
 
         return final_answer
+    
+    def test_context_code(self, context, code_str):
+        """
+        Run a code string the same way the LLM would do.
+        """
+        self.messages = self.setup_context(context)
+                
+        # Check for code blocks
+        code_blocks = utils.find_code_blocks(code_str)
+        
+        # Process code execution or add assistant message
+        if code_blocks is not None:
+            return utils.process_code_execution(
+                code_str, self.messages, self.repl_env, 
+                self.repl_env_logger, self.logger
+            )
     
     def cost_summary(self) -> Dict[str, Any]:
         """Get the cost summary of the Root LM + Sub-RLM Calls."""

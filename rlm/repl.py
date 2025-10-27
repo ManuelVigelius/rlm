@@ -8,8 +8,10 @@ import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Optional
+from pandas import DataFrame
 
 from rlm import RLM
+from .utils.time_series import get_features
 
 # Simple sub LM for REPL environment. Note: This could also be just the RLM itself!
 class Sub_RLM(RLM):
@@ -74,6 +76,7 @@ class REPLEnv:
         recursive_model: str = "gpt-5-mini",
         context_json: Optional[dict | list] = None,
         context_str: Optional[str] = None,
+        context_ts: Optional[DataFrame] = None,
         setup_code: str = None,
     ):
         # Store the original working directory
@@ -164,7 +167,9 @@ class REPLEnv:
         self.stdout_buffer = io.StringIO()
         self.stderr_buffer = io.StringIO()
 
-        self.load_context(context_json, context_str)
+        self.load_context(context_json, context_str, context_ts)
+        
+        self.globals['get_features'] = get_features
         
         def llm_query(prompt: str) -> str:
             """Query the LLM with the given prompt."""
@@ -197,7 +202,7 @@ class REPLEnv:
         if setup_code:
             self.code_execution(setup_code)
     
-    def load_context(self, context_json: Optional[dict | list] = None, context_str: Optional[str] = None):
+    def load_context(self, context_json: Optional[dict | list] = None, context_str: Optional[str] = None, context_ts: Optional[DataFrame] = None):
         # Write context JSON to temporary directory using absolute (temp dir) path
         if context_json is not None:
             context_path = os.path.join(self.temp_dir, "context.json")
@@ -218,6 +223,16 @@ class REPLEnv:
                 f"import os\n"
                 f"with open(r'{context_path}', 'r') as f:\n"
                 f"    context = f.read()\n"
+            )
+            self.code_execution(context_code)
+
+        if context_ts is not None:
+            context_path = os.path.join(self.temp_dir, "context.csv")
+            context_ts.to_csv(context_path, index=False)
+            context_code = (
+                f"import pandas as pd\n"
+                f"context = pd.read_csv(r'{context_path}')\n"
+                f"context['ds'] = pd.to_datetime(context['ds'])"
             )
             self.code_execution(context_code)
     
